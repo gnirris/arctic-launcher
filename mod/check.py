@@ -33,9 +33,15 @@ def check(target):
     compiled = subprocess.run(
         [str(GRADLEW), *OFFLINE, "-p", f"versions/{project}", "compileJava", "processResources", *(["remapJar"] if project == "fabric13" else []), *(["-q"] if "--info" not in OFFLINE else []),
          f"-Pminecraft_version={version}", f"-Pcovers={covers}"],
-        cwd=MOD,
+        cwd=MOD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )
+    print(compiled.stdout, end="", flush=True)
     if compiled.returncode != 0:
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            # Make dependency/compile failures readable from the check annotations too.
+            # Logs require a GitHub login even for a public repository.
+            detail = compiled.stdout[-12000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print(f"::error title=Gradle build failed ({version})::{detail}", flush=True)
         return f"{version}: does not compile"
     if project in ("fabric", "fabric13") and subprocess.run([sys.executable, str(MIXCHECK), version]).returncode != 0:
         return f"{version}: mixin problems"
