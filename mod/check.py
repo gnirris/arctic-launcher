@@ -30,12 +30,19 @@ def check(target):
     project = target.get("project", "fabric")
     covers = ",".join(target["covers"])
     print(f"== {version} ({project})", flush=True)
-    compiled = subprocess.run(
-        [str(GRADLEW), *OFFLINE, "-p", f"versions/{project}", "compileJava", "processResources", *(["remapJar"] if project == "fabric13" else []), *(["-q"] if "--info" not in OFFLINE else []),
-         f"-Pminecraft_version={version}", f"-Pcovers={covers}"],
-        cwd=MOD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-    )
+    command = [str(GRADLEW), *OFFLINE, "-p", f"versions/{project}", "compileJava", "processResources", *(["remapJar"] if project == "fabric13" else []), *(["-q"] if "--info" not in OFFLINE else []),
+               f"-Pminecraft_version={version}", f"-Pcovers={covers}"]
+    compiled = subprocess.run(command, cwd=MOD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     print(compiled.stdout, end="", flush=True)
+    if (compiled.returncode != 0 and "--offline" not in OFFLINE and "--refresh-dependencies" not in OFFLINE
+            and "Could not resolve" in compiled.stdout and "Could not find" in compiled.stdout):
+        # Gradle caches missing artifacts too. A restored CI cache can keep reporting a transient
+        # Maven Central 404 after the published jars are available again. Refresh once; code errors
+        # and explicit offline builds are never retried.
+        print(f"{version}: refreshing cached dependency misses and retrying once", flush=True)
+        compiled = subprocess.run([command[0], "--refresh-dependencies", *command[1:]],
+                                  cwd=MOD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        print(compiled.stdout, end="", flush=True)
     if compiled.returncode != 0:
         if os.environ.get("GITHUB_ACTIONS") == "true":
             # Make dependency/compile failures readable from the check annotations too.
