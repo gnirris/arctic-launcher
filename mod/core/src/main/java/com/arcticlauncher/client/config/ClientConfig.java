@@ -94,8 +94,12 @@ public final class ClientConfig {
 	/** Press sprint/sneak once to keep sprinting/sneaking. */
 	public boolean toggleSprint;
 	public boolean toggleSneak;
+	/** Hotbar scroll stops on slot 1 and slot 9 instead of wrapping (the game's own wrap when off). */
+	public boolean hotbarScrollStop;
 	/** View: chat timestamps, stacked repeats, lower fire, no rain. */
 	public boolean chatTimestamps;
+	/** Copy real in-game chat using the timestamp/copy target or Shift + right-click. */
+	public boolean chatCopy = true;
 	public boolean chatStack = true;
 	/** Chat lines that say your name are marked, with a soft ping. */
 	public boolean chatMentions = true;
